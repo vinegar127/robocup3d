@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+# .gitattributes —— 让「行尾符」由仓库统一决定，而不是靠每个人自己配
+# ---------------------------------------------------------------------------
+# 为什么需要这个文件？
+# docs/01-环境安装.md 让每个人设了 core.autocrlf=true，
+# 但现实中总有人没设、或者用 Git GUI 绕过了设置。
+# 一旦有人提交了 CRLF 文件，整个团队就再也看不懂 git diff 了。
+#
+# 这个文件把规则【固化进仓库】——不管你本地怎么配，行为都一致。
+# 这是「团队协作」和「个人用 Git」的关键区别。
+#
+# 详见 docs/01-环境安装.md 第 3.4 节。
+# ---------------------------------------------------------------------------
+
+# 默认：自动识别文本文件，提交时统一转成 LF 存进仓库
+* text=auto eol=lf
+
+# --- 明确指定为文本的文件（规范化为 LF）---
+*.py    text eol=lf
+*.pyi   text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.ini   text eol=lf
+*.cfg   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.ts    text eol=lf
+*.sh    text eol=lf
+*.xml   text eol=lf
+
+# --- Windows 专用脚本必须保留 CRLF，否则 .bat/.ps1 会执行失败 ---
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# --- 二进制文件：禁止 Git 做任何换行/编码转换 ---
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.7z    binary
+*.exe   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.pt    binary
+*.pth   binary
+*.ckpt  binary
+*.pkl   binary
+*.npy   binary
+*.npz   binary
+*.mjb   binary
+*.stl   binary
+*.obj   binary
+*.dae   binary
+
+# --- 语言与统计 ---
+# 让 GitHub 不要把 HTML 目录当成「文档」语言，影响语言统计
+tools/walkviz/index.html linguist-vendored=false
+
+# git diff 时对 Jupyter notebook 更友好（后期训练可视化会用到）
+*.ipynb diff=jupyternotebook

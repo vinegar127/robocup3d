@@ -1,0 +1,65 @@
+MIT License
+
+Copyright (c) 2026 RoboCup 3D Simulation Prep Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## 中文说明（非官方翻译，仅供参考，以英文原文为准）
+
+本项目采用 MIT 许可证。简单说就是：
+
+**你可以：**
+- 自由使用、修改、分发本项目的代码
+- 用在你的比赛项目里（包括商业用途）
+- 把它作为你队伍程序的基础
+
+**你必须：**
+- 保留上面的版权声明和许可证文本
+- 在你的技术报告 / README 里注明使用了本项目
+
+**你不能：**
+- 让作者为你的使用后果负责（软件按「原样」提供）
+
+---
+
+## ⚠️ 给比赛队伍的特别提醒
+
+RoboCup 要求**所有第三方代码的使用都必须在技术报告中注明出处**。
+
+如果你的队伍使用了本仓库的代码，请在技术报告的「致谢与参考」章节中写明，
+例如：
+
+```markdown
+本队伍的程序使用了以下开源项目：
+
+- RoboCup 3D Simulation Prep (https://github.com/<你的组织>/robocup3d-prep),
+  MIT License
+  用于：环境搭建参考、agent 行为状态机设计、步态引擎的思路
+
+所有第三方代码的使用均遵守其原始许可证。
+```
+
+**注意**：本项目是**教学材料**，其中的简化仿真器（`code/demo_sim.py`）
+**不是**比赛用的物理仿真器，不能用于正式比赛提交。
+正式比赛请使用官方服务器 `rcssservermj`。
+
+如果你在本项目中引用了其他队伍的代码或论文，请参考
+`docs/04-代码库分析.md` 第 4 节「怎么『抄』代码才是合规的」。

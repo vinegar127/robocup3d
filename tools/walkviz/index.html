@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoboCup3D 步态可视化 Demo —— 零依赖，双击即用</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#30363d;
+    --fg:#e6edf3; --dim:#8b949e; --acc:#58a6ff; --ok:#3fb950;
+    --warn:#d29922; --bad:#f85149; --purple:#bc8cff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    display:flex; height:100vh; overflow:hidden;
+  }
+  #stage{flex:1; position:relative; min-width:0}
+  canvas{display:block; width:100%; height:100%}
+  #hud{
+    position:absolute; left:14px; top:14px; padding:10px 14px;
+    background:rgba(22,27,34,.86); border:1px solid var(--line);
+    border-radius:8px; font-size:13px; line-height:1.7;
+    font-variant-numeric:tabular-nums; pointer-events:none;
+  }
+  #hud b{color:var(--acc)}
+  #hud .k{color:var(--dim)}
+  #banner{
+    position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    background:rgba(22,27,34,.9); border:1px solid var(--line);
+    border-radius:8px; padding:8px 16px; font-size:12.5px; color:var(--dim);
+    white-space:nowrap;
+  }
+  aside{
+    width:330px; background:var(--panel); border-left:1px solid var(--line);
+    padding:18px; overflow-y:auto; flex-shrink:0;
+  }
+  aside h1{font-size:16px; margin:0 0 4px}
+  aside .sub{font-size:12px; color:var(--dim); margin-bottom:18px; line-height:1.6}
+  .grp{margin-bottom:20px}
+  .grp>h2{
+    font-size:12px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--dim); margin:0 0 10px; font-weight:600;
+    padding-bottom:6px; border-bottom:1px solid var(--line);
+  }
+  .row{margin-bottom:12px}
+  .row label{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:5px}
+  .row label span:last-child{color:var(--acc); font-variant-numeric:tabular-nums}
+  .row .hint{font-size:11px; color:var(--dim); margin-top:4px; line-height:1.5}
+  input[type=range]{
+    width:100%; -webkit-appearance:none; appearance:none; height:4px;
+    background:var(--line); border-radius:2px; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--acc); cursor:pointer; border:2px solid var(--panel);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:12px; height:12px; border-radius:50%; background:var(--acc);
+    cursor:pointer; border:2px solid var(--panel);
+  }
+  .btns{display:flex; gap:8px; flex-wrap:wrap}
+  button{
+    flex:1; min-width:88px; padding:9px 10px; font-size:12.5px; cursor:pointer;
+    background:#21262d; color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; font-family:inherit; transition:.15s;
+  }
+  button:hover{background:#30363d; border-color:#484f58}
+  button.on{background:#1f6feb; border-color:#1f6feb; color:#fff}
+  .preset button{min-width:0; flex:1}
+  .legend{font-size:11.5px; color:var(--dim); line-height:1.9; margin-top:14px}
+  .legend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px}
+  code{background:#21262d; padding:1px 5px; border-radius:3px; font-size:11.5px}
+  .status{padding:8px 10px; border-radius:6px; font-size:12px; margin-top:12px; line-height:1.6}
+  .status.ok{background:rgba(63,185,80,.12); border:1px solid rgba(63,185,80,.35); color:var(--ok)}
+  .status.warn{background:rgba(210,153,34,.12); border:1px solid rgba(210,153,34,.35); color:var(--warn)}
+  .status.bad{background:rgba(248,81,73,.12); border:1px solid rgba(248,81,73,.35); color:var(--bad)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"></div>
+  <div id="banner">鼠标左键拖动 = 转视角 ｜ 滚轮 = 缩放 ｜ 空格 = 暂停</div>
+</div>
+
+<aside>
+  <h1>RoboCup3D 步态 Demo</h1>
+  <div class="sub">
+    零依赖单文件，双击就能跑。<br>
+    这里没有仿真器、没有神经网络 —— 只有<strong>关节角度</strong>和<strong>正弦曲线</strong>。
+    先把这一层看明白，再看强化学习才不会晕。
+  </div>
+
+  <div class="grp">
+    <h2>步态参数</h2>
+    <div class="row">
+      <label><span>步幅 step_length</span><span id="v_sl">0.20 m</span></label>
+      <input type="range" id="step_length" min="0.02" max="0.45" step="0.01" value="0.20">
+      <div class="hint">脚往前迈多远。调太大会劈叉摔倒。</div>
+    </div>
+    <div class="row">
+      <label><span>抬脚高度 step_height</span><span id="v_sh">0.06 m</span></label>
+      <input type="range" id="step_height" min="0" max="0.20" step="0.005" value="0.06">
+      <div class="hint">调 0 试试：脚贴地拖行，会绊倒。</div>
+    </div>
+    <div class="row">
+      <label><span>周期 cycle_time</span><span id="v_ct">0.60 s</span></label>
+      <input type="range" id="cycle_time" min="0.20" max="1.50" step="0.02" value="0.60">
+      <div class="hint">走一步花多久。越小越快，但越容易摔。</div>
+    </div>
+    <div class="row">
+      <label><span>躯干高度 body_height</span><span id="v_bh">0.55 m</span></label>
+      <input type="range" id="body_height" min="0.40" max="0.70" step="0.01" value="0.55">
+      <div class="hint">越低越稳。观察膝盖弯曲程度的变化。</div>
+    </div>
+    <div class="row">
+      <label><span>左右摆胯 sway</span><span id="v_sw">0.030 m</span></label>
+      <input type="range" id="sway" min="0" max="0.10" step="0.005" value="0.03">
+      <div class="hint">把重心移到支撑脚上。调到 0 看它怎么倒。</div>
+    </div>
+    <div class="row">
+      <label><span>前倾 lean</span><span id="v_ln">2.0°</span></label>
+      <input type="range" id="lean" min="-8" max="15" step="0.5" value="2">
+      <div class="hint">像起跑那样身体前倾。</div>
+    </div>
+  </div>
+
+  <div class="grp">
+    <h2>预设动作</h2>
+    <div class="btns preset">
+      <button data-preset="walk">正常行走</button>
+      <button data-preset="fast">冲刺</button>
+      <button data-preset="crawl">龟速稳走</button>
+      <button data-preset="broken">坏掉的步态</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <h2>显示与控制</h2>
+    <div class="btns">
+      <button id="btnPlay" class="on">暂停 / 继续</button>
+      <button id="btnTrail" class="on">轨迹</button>
+      <button id="btnGrid" class="on">地面网格</button>
+      <button id="btnShadow" class="on">投影</button>
+      <button id="btnReset">回到起点</button>
+      <button id="btnSpeed">速度 ×1</button>
+    </div>
+    <div class="legend">
+      <i style="background:#58a6ff"></i>大腿 thigh (0.30m)<br>
+      <i style="background:#3fb950"></i>小腿 shank (0.30m)<br>
+      <i style="background:#d29922"></i>脚掌 foot (0.10m)<br>
+      <i style="background:#bc8cff"></i>躯干 + 手臂<br>
+      <i style="background:#f85149"></i>重心投影 CoM
+    </div>
+    <div class="status ok" id="stability">稳定性：正常</div>
+  </div>
+
+  <div class="grp">
+    <h2>看懂了然后呢？</h2>
+    <div class="hint" style="color:#8b949e">
+      1. 读同目录的 <code>walk.py</code>，逻辑完全一样；<br>
+      2. 读 <code>docs/03-技术入门.md</code> 了解完整架构；<br>
+      3. 把 <code>code/agent/</code> 里的 agent 接到真仿真器上。
+    </div>
+  </div>
+</aside>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   第 1 部分：运动学 —— 和 walk.py 里的 LegKinematics 一模一样
+   每根肢体就是一根棍子，角度累加，末端位置靠 sin/cos 算出来。
+   ========================================================================= */
+
+const THIGH = 0.30, SHANK = 0.30, FOOT = 0.10;   // 米
+
+/** 正运动学：给定 3 个关节角（度），返回膝/踝/脚尖在矢状面(x,z)的坐标 */
+function legForward(hipPitch, knee, ankle) {
+  const hip = hipPitch * Math.PI / 180;
+  const kne = knee * Math.PI / 180;
+  const ank = ankle * Math.PI / 180;
+
+  const kneeX = THIGH * Math.sin(hip);
+  const kneeZ = -THIGH * Math.cos(hip);
+
+  const shankAngle = hip + kne;
+  const ankleX = kneeX + SHANK * Math.sin(shankAngle);
+  const ankleZ = kneeZ - SHANK * Math.cos(shankAngle);
+
+  const footAngle = shankAngle + ank;
+  const toeX = ankleX + FOOT * Math.sin(footAngle);
+  const toeZ = ankleZ - FOOT * Math.cos(footAngle);
+
+  return { kneeX, kneeZ, ankleX, ankleZ, toeX, toeZ };
+}
+
+/** 逆运动学：希望脚踝落在 (x,z)，反解出髋、膝角度。余弦定理。 */
+function legInverse(tx, tz) {
+  let dist = Math.hypot(tx, tz);
+  const maxReach = THIGH + SHANK - 1e-6;
+  if (dist > maxReach) { const s = maxReach / dist; tx *= s; tz *= s; dist = maxReach; }
+  dist = Math.max(dist, 1e-6);
+
+  let ck = (THIGH*THIGH + SHANK*SHANK - dist*dist) / (2*THIGH*SHANK);
+  ck = Math.max(-1, Math.min(1, ck));
+  const knee = -(Math.PI - Math.acos(ck));
+
+  let ca = (THIGH*THIGH + dist*dist - SHANK*SHANK) / (2*THIGH*dist);
+  ca = Math.max(-1, Math.min(1, ca));
+  const alpha = Math.acos(ca);
+
+  const hip = Math.atan2(tx, -tz) + alpha;
+  return { hip: hip * 180/Math.PI, knee: knee * 180/Math.PI };
+}
+
+/* =========================================================================
+   第 2 部分：步态生成器 —— 和 walk.py 里的 GaitGenerator 逻辑一致
+   ========================================================================= */
+
+const P = { step_length:0.20, step_height:0.06, cycle_time:0.60,
+            body_height:0.55, sway:0.03, lean:2.0 };
+
+let gait = { phase:0, distance:0 };
+
+/** 一条腿在相位 p（0~1）时的脚位置 */
+function footTrajectory(p) {
+  p = ((p % 1) + 1) % 1;
+  const x = 0.5 * P.step_length * Math.sin(2*Math.PI*p);
+  // 前半个周期是摆动相（抬脚），后半个周期是支撑相（贴地）
+  const z = (p < 0.5) ? P.step_height * Math.sin(Math.PI * (p/0.5)) : 0;
+  return { x, z };
+}
+
+/** 生成 t 时刻的所有关节角（度）。这是整个 demo 的核心函数。 */
+function makeJoints(t) {
+  gait.phase = (t / P.cycle_time) % 1;
+
+  const joints = {};
+  const legs = [
+    { side:'l', ph: gait.phase },
+    { side:'r', ph: (gait.phase + 0.5) % 1 },
+  ];
+
+  for (const leg of legs) {
+    const ft = footTrajectory(leg.ph);
+    const footX = ft.x;
+    const footZ = -P.body_height + ft.z;
+
+    const ik = legInverse(footX, footZ);
+    let hip = ik.hip + P.lean;
+
+    // 髋部左右摆：把重心压到支撑脚一侧
+    const swaySign = Math.sin(2*Math.PI*gait.phase);
+    const sign = (leg.side === 'l') ? 1 : -1;
+    const hipRoll = sign * swaySign * (P.sway / 0.30) * 57.2958;
+
+    // 踝关节让脚掌尽量与地面平行
+    let ankle = -(hip + ik.knee);
+    if (leg.ph >= 0.5) ankle += 3;
+
+    joints[leg.side+'_hip_pitch']  = clamp(hip, -100, 100);
+    joints[leg.side+'_knee']       = clamp(ik.knee, -130, 5);
+    joints[leg.side+'_hip_roll']   = clamp(hipRoll, -45, 45);
+    joints[leg.side+'_ankle_pitch']= clamp(ankle, -40, 40);
+  }
+
+  // 手臂反向摆动（人类走路时靠这个抵消角动量）
+  const swing = 25 * Math.sin(2*Math.PI*gait.phase);
+  joints['l_shoulder_pitch'] = -swing;
+  joints['r_shoulder_pitch'] =  swing;
+  joints['l_elbow'] = -20;
+  joints['r_elbow'] = -20;
+
+  return joints;
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* =========================================================================
+   第 3 部分：3D 渲染 —— 自己手写一个极简渲染器
+   只用 canvas 2D 的线段绘制，配上透视投影和画家算法。
+   目的是让你看清「3D 其实就是把 3D 点投影到 2D 屏幕」，不需要 Three.js。
+   ========================================================================= */
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+// ---- 相机：绕原点旋转的轨道相机 ----
+const cam = { yaw: -0.55, pitch: 0.28, dist: 4.2, target: [0, 0, 0.55] };
+
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  cam.yaw   += (e.clientX - lastX) * 0.008;
+  cam.pitch += (e.clientY - lastY) * 0.005;
+  cam.pitch = clamp(cam.pitch, -0.15, 1.35);
+  lastX = e.clientX; lastY = e.clientY;
+});
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.10), 1.2, 14);
+}, { passive:false });
+
+/** 世界坐标 -> 相机坐标 */
+function toCam(p) {
+  let [x, y, z] = p;
+  x -= cam.target[0]; y -= cam.target[1]; z -= cam.target[2];
+  // 先绕 z 轴转 yaw，再绕 x 轴转 pitch
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  let x1 =  x*cy + y*sy;
+  let y1 = -x*sy + y*cy;
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const y2 = y1*cp - z*sp;
+  const z2 = y1*sp + z*cp;
+  return [x1, y2, z2];
+}
+
+/** 相机坐标 -> 屏幕像素（透视投影：近大远小） */
+function project(p) {
+  const c = toCam(p);
+  const depth = c[2] + cam.dist;           // 距离相机的深度
+  const f = 1.55 * Math.min(W, H);          // 焦距
+  const s = f / Math.max(depth, 0.05);
+  return { x: W/2 + c[0]*s, y: H/2 - c[1]*s + H*0.16, depth };
+}
+
+// ---- 场景状态 ----
+let simTime = 0, playing = true, showTrail = true, showGrid = true, showShadow = true;
+let speedMul = 1;
+const trail = [];               // 走过的轨迹（世界坐标）
+const HISTORY = 420;
+
+/* 手写线绘制：按深度排序，远的先画（画家算法） */
+const drawQueue = [];
+function line(a, b, color, width) {
+  const pa = project(a), pb = project(b);
+  const depth = (pa.depth + pb.depth) / 2;
+  drawQueue.push({ depth, pts:[pa, pb], color, width });
+}
+function flush() {
+  drawQueue.sort((m, n) => n.depth - m.depth);
+  for (const d of drawQueue) {
+    ctx.strokeStyle = d.color;
+    ctx.lineWidth = d.width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(d.pts[0].x, d.pts[0].y);
+    ctx.lineTo(d.pts[1].x, d.pts[1].y);
+    ctx.stroke();
+  }
+  drawQueue.length = 0;
+}
+
+/* --- 构建机器人骨架 ---
+   躯干在 (0,0,zBody)。左右腿分别在 y=+0.09 / y=-0.09。
+   每条腿：髋 -> 膝 -> 踝 -> 脚尖，用正运动学算出来。            */
+function buildSkeleton(joints, worldX, zBody) {
+  const segs = [];           // {a:[x,y,z], b:[...], color, w}
+  const hipY = 0.09;
+
+  const feet = {};
+  for (const side of ['l','r']) {
+    const sign = (side === 'l') ? 1 : -1;
+    const hipPitch = joints[side+'_hip_pitch'];
+    const knee     = joints[side+'_knee'];
+    const ankleP  = joints[side+'_ankle_pitch'];
+    const hipRoll = joints[side+'_hip_roll'] * Math.PI/180;
+
+    const fk = legForward(hipPitch, knee, ankleP);
+
+    // 髋关节位置：考虑左右摆胯
+    const lateral = hipY * Math.cos(hipRoll) * sign;
+    const hipZ    = zBody + hipY * Math.sin(hipRoll) * sign;
+
+    const hip   = [worldX, lateral, hipZ];
+    // 膝关节：正运动学的 z 是相对髋向下的，所以加到髋上
+    const kne   = [worldX + fk.kneeX,  lateral, hipZ + fk.kneeZ];
+    const ankle = [worldX + fk.ankleX, lateral, hipZ + fk.ankleZ];
+    const toe   = [worldX + fk.toeX,   lateral, hipZ + fk.toeZ];
+
+    segs.push({ a:hip,   b:kne,   color:'#58a6ff', w:7 });   // 大腿
+    segs.push({ a:kne,   b:ankle, color:'#3fb950', w:6 });   // 小腿
+    segs.push({ a:ankle, b:toe,   color:'#d29922', w:5 });   // 脚掌
+
+    feet[side] = { ankle, toe, z:ankle[2] };
+  }
+
+  // 骨盆 / 躯干
+  const hipL = segs[0].a, hipR = segs[3].a;
+  const pelvisY = 0.05;
+  const shoulderZ = zBody + 0.42;
+  segs.push({ a:hipL, b:hipR, color:'#bc8cff', w:8 });                         // 胯
+  segs.push({ a:[worldX, 0, zBody+0.06], b:[worldX, 0, shoulderZ], color:'#bc8cff', w:9 }); // 脊柱
+
+  // 手臂
+  for (const side of ['l','r']) {
+    const sign = (side === 'l') ? 1 : -1;
+    const sp = joints[side+'_shoulder_pitch'] * Math.PI/180;
+    const elbow = joints[side+'_elbow'] * Math.PI/180;
+    const sh = [worldX, pelvisY*sign, shoulderZ];
+    // 手臂自然长度：上臂 0.26，前臂 0.24
+    const el = [sh[0] + 0.26*Math.sin(sp), sh[1] + 0.02*sign, sh[2] - 0.26*Math.cos(sp)];
+    const sa = sp + elbow;
+    const hd = [el[0] + 0.24*Math.sin(sa), el[1] + 0.02*sign, el[2] - 0.24*Math.cos(sa)];
+    segs.push({ a:sh, b:el, color:'#bc8cff', w:5 });
+    segs.push({ a:el, b:hd, color:'#8b949e', w:4 });
+  }
+
+  // 头
+  const headZ = shoulderZ + 0.16;
+  segs.push({ a:[worldX,0,shoulderZ], b:[worldX,0,headZ], color:'#e6edf3', w:6 });
+  return { segs, feet, com:[worldX, 0, zBody] };
+}
+
+/* --- 地面网格与坐标轴 --- */
+function drawGround() {
+  const R = 3.2, N = 12, step = R*2/N;
+  for (let i = 0; i <= N; i++) {
+    const v = -R + i*step;
+    const fade = Math.abs(v) < 0.01 ? '#3d444d' : '#22272e';
+    line([v,-R,0],[v,R,0], fade, 1);
+    line([-R,v,0],[R,v,0], fade, 1);
+  }
+  // 前进方向提示（红色箭头 = +x）
+  line([0,0,0],[0.9,0,0], '#f85149', 2);
+  line([0,0,0],[0,0.9,0], '#3fb950', 2);
+}
+
+/* --- 主循环 --- */
+let last = performance.now();
+function frame(now) {
+  const realDt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+
+  if (playing) simTime += realDt * speedMul;
+
+  // 前进位移：理想速度 = 步幅/周期，乘 0.85 的打滑折扣
+  const worldX = (P.step_length / P.cycle_time) * simTime * 0.85;
+
+  const joints = makeJoints(simTime);
+  const sk = buildSkeleton(joints, worldX, P.body_height);
+
+  // ---- 渲染 ----
+  ctx.clearRect(0, 0, W, H);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0d1117'); g.addColorStop(1, '#161b22');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  if (showGrid) drawGround();
+
+  // 轨迹线
+  if (showTrail) {
+    trail.push([worldX, 0, 0.005]);
+    if (trail.length > HISTORY) trail.shift();
+    for (let i = 1; i < trail.length; i++) {
+      const t = i / trail.length;
+      line(trail[i-1], trail[i], `rgba(88,166,255,${0.06 + t*0.5})`, 2);
+    }
+  }
+
+  // 地面投影（让你直观看到脚有没有离地）
+  if (showShadow) {
+    for (const side of ['l','r']) {
+      const f = sk.feet[side];
+      const h = Math.max(f.z, 0);
+      // 脚越高，投影越淡、越小 —— 一眼看出摆动相和支撑相
+      const alpha = 0.45 * Math.max(0, 1 - h/0.25);
+      ctx.save();
+      const p = project([f.ankle[0], f.ankle[1], 0.002]);
+      ctx.fillStyle = `rgba(210,153,34,${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, 9, 4, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 骨架
+  for (const s of sk.segs) line(s.a, s.b, s.color, s.w);
+  flush();
+
+  // 关节点：把关节画成小圆点，提示「这些都是仿真器要接收的数值」
+  for (const s of sk.segs) {
+    const p = project(s.a);
+    ctx.fillStyle = '#e6edf3';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI*2); ctx.fill();
+  }
+
+  // 重心红点 + 落地垂线
+  const comP = project(sk.com);
+  const comG = project([sk.com[0], sk.com[1], 0]);
+  ctx.strokeStyle = 'rgba(248,81,73,.55)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(comP.x, comP.y); ctx.lineTo(comG.x, comG.y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f85149';
+  ctx.beginPath(); ctx.arc(comG.x, comG.y, 4, 0, Math.PI*2); ctx.fill();
+
+  updateHUD(joints, worldX, sk);
+  requestAnimationFrame(frame);
+}
+
+/* --- HUD 与稳定性提示 --- */
+function updateHUD(joints, worldX, sk) {
+  const speed = (P.step_length / P.cycle_time) * 0.85;
+  document.getElementById('hud').innerHTML =
+    `<b>仿真时间</b> <span class="k">t =</span> ${simTime.toFixed(2)} s<br>` +
+    `<b>步态相位</b> <span class="k">φ =</span> ${(gait.phase).toFixed(2)}<br>` +
+    `<b>前进距离</b> <span class="k">x =</span> ${worldX.toFixed(2)} m<br>` +
+    `<b>理论速度</b> <span class="k">v =</span> ${speed.toFixed(2)} m/s<br>` +
+    `<b>左膝角度</b> ${joints['l_knee'].toFixed(1)}°<br>` +
+    `<b>右膝角度</b> ${joints['r_knee'].toFixed(1)}°`;
+
+  // 稳定性体检：脚离地高度差、步幅是否过大
+  const el = document.getElementById('stability');
+  const footGap = Math.abs(sk.feet.l.z - sk.feet.r.z);
+  const problems = [];
+  if (P.step_height < 0.015) problems.push('抬脚太低，会绊倒');
+  if (P.sway < 0.008)        problems.push('没有摆胯，重心压不到支撑脚');
+  if (P.step_length > 0.34)  problems.push('步幅过大，容易劈叉');
+  if (P.cycle_time < 0.30)   problems.push('周期太短，来不及换重心');
+  if (P.body_height < 0.46)  problems.push('蹲得太低，膝盖负担大');
+  if (footGap > 0.22)        problems.push('两脚高度差过大');
+
+  if (problems.length === 0) {
+    el.className = 'status ok';
+    el.textContent = '稳定性：正常 ✓ 重心落在支撑脚范围内';
+  } else if (problems.length === 1) {
+    el.className = 'status warn';
+    el.textContent = '稳定性：警告 ⚠ ' + problems[0];
+  } else {
+    el.className = 'status bad';
+    el.textContent = '稳定性：会摔倒 ✗ ' + problems.slice(0,2).join('；');
+  }
+}
+
+/* =========================================================================
+   第 4 部分：UI 绑定
+   ========================================================================= */
+
+const sliders = ['step_length','step_height','cycle_time','body_height','sway','lean'];
+const labelFmt = {
+  step_length: v => v.toFixed(2)+' m',
+  step_height: v => v.toFixed(3)+' m',
+  cycle_time:  v => v.toFixed(2)+' s',
+  body_height: v => v.toFixed(2)+' m',
+  sway:        v => v.toFixed(3)+' m',
+  lean:        v => v.toFixed(1)+'°',
+};
+
+function syncUI() {
+  for (const k of sliders) {
+    const el = document.getElementById(k);
+    el.value = P[k];
+    document.getElementById('v_' + k.replace('step_length','sl')
+                                  .replace('step_height','sh')
+                                  .replace('cycle_time','ct')
+                                  .replace('body_height','bh')
+                                  .replace('sway','sw').replace('lean','ln')).textContent = labelFmt[k](P[k]);
+  }
+}
+
+for (const k of sliders) {
+  document.getElementById(k).addEventListener('input', e => {
+    P[k] = parseFloat(e.target.value);
+    syncUI();
+  });
+}
+
+const presets = {
+  walk:   { step_length:0.20, step_height:0.06, cycle_time:0.60, body_height:0.55, sway:0.03, lean:2.0 },
+  fast:   { step_length:0.32, step_height:0.10, cycle_time:0.34, body_height:0.56, sway:0.045, lean:7.0 },
+  crawl:  { step_length:0.10, step_height:0.035, cycle_time:1.00, body_height:0.52, sway:0.028, lean:0.0 },
+  broken: { step_length:0.42, step_height:0.005, cycle_time:0.26, body_height:0.44, sway:0.0, lean:14.0 },
+};
+for (const btn of document.querySelectorAll('[data-preset]')) {
+  btn.addEventListener('click', () => {
+    Object.assign(P, presets[btn.dataset.preset]);
+    syncUI();
+  });
+}
+
+document.getElementById('btnPlay').addEventListener('click', e => {
+  playing = !playing; e.target.classList.toggle('on', playing);
+});
+document.getElementById('btnTrail').addEventListener('click', e => {
+  showTrail = !showTrail; e.target.classList.toggle('on', showTrail); trail.length = 0;
+});
+document.getElementById('btnGrid').addEventListener('click', e => {
+  showGrid = !showGrid; e.target.classList.toggle('on', showGrid);
+});
+document.getElementById('btnShadow').addEventListener('click', e => {
+  showShadow = !showShadow; e.target.classList.toggle('on', showShadow);
+});
+document.getElementById('btnReset').addEventListener('click', () => {
+  simTime = 0; gait.phase = 0; trail.length = 0;
+});
+document.getElementById('btnSpeed').addEventListener('click', e => {
+  speedMul = speedMul >= 2 ? 0.5 : speedMul * 2;
+  e.target.textContent = '速度 ×' + speedMul;
+});
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    document.getElementById('btnPlay').click();
+  }
+});
+
+/* 启动 */
+resize();
+syncUI();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

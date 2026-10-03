@@ -1,0 +1,127 @@
+# ---------------------------------------------------------------------------
+# RoboCup3D 备赛仓库 .gitignore
+# ---------------------------------------------------------------------------
+# 千万不要删掉这个文件！它决定了哪些文件【不】进版本库。
+# 详见 docs/01-环境安装.md 第 9 章 E14。
+# ---------------------------------------------------------------------------
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === 虚拟环境（★ 绝对不要提交！体积大、不可跨机器、路径写死）===
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# === 测试与覆盖率 ===
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# === Jupyter ===
+.ipynb_checkpoints/
+
+# === C++ / CMake（备赛后期会用到）===
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.o
+*.obj
+*.dll
+*.exe
+*.out
+*.a
+*.lib
+
+# === 仿真器与训练产物 ===
+# 比赛 log 文件动辄几百 MB，绝对不能提交
+*.log
+logs/
+*.rcg
+*.rcl
+*.rpl
+
+# 强化学习 checkpoint（非常大，用网盘/Release 分享，别塞进 Git）
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.h5
+*.onnx
+models/
+checkpoints/
+runs/
+wandb/
+outputs/
+
+# MuJoCo 编译产物
+*.mjb
+mjmodel.xml
+
+# === 数据 ===
+data/
+datasets/
+*.csv
+*.parquet
+
+# === 机密（★ 提交了就等于泄露，见 E14）===
+.env
+.env.*
+!.env.example
+secrets.py
+secrets.json
+*.pem
+*.key
+credentials.json
+
+# === 编辑器 ===
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# === 操作系统 ===
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# === 临时文件（本仓库文档里提到的那些）===
+_pdf_extract.txt
+_research/
+*.tmp
+*.bak
