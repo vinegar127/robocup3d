@@ -1,239 +1,226 @@
 # 如何把这个仓库推送到 GitHub
 
-> **当前状态**：本地 Git 仓库**已经建好了**，代码已提交（4 个 commit）。
-> 你只差「在 GitHub 上建一个空仓库」+「推上去」这两步。
+> **当前状态**：本地 Git 仓库**已经建好了**，代码已提交（7 个 commit）。
+> remote 已指向正确地址，你只差「推送 + 认证」这一步。
+
+---
+
+## ⚠️ 先记住这两个名字不一样
+
+| | 名字 |
+|---|------|
+| **本地文件夹** | `robocup3d-prep` |
+| **GitHub 仓库** | `robocup3d-` ← **末尾有一个横杠！** |
+
+**这个横杠是真实存在的，不要漏掉。** 漏掉就会得到：
+
+```
+fatal: repository 'https://github.com/用户名/robocup3d.git/' not found
+```
+
+> 💡 **为什么容易搞错**：GitHub 仓库名末尾带 `-` 是很罕见的写法，
+> 肉眼几乎注意不到。如果推送时提示仓库不存在，
+> **第一件事就是去网页上把仓库名复制下来对照一遍**，
+> 而不是怀疑网络或权限。
 
 ---
 
 ## 前置检查
 
-先确认本地仓库是好的：
-
 ```powershell
-cd <本仓库目录>
+cd E:\dsh_workspace\3d\robocup3d-prep
+git remote -v
 git log --oneline
 git status
 ```
 
-应该看到类似输出：
+应该看到：
 
 ```
-6f8083d fix: run_demo.bat 改为纯 ASCII，修复中文导致 cmd.exe 解析失败
-f3f6fa6 docs: 补充完整步态周期数据表与说明
-ed63e5f docs: 增加 2D 仿真附录、术语表与常见误解；修正感知器命名
-0b8b891 feat: RoboCup 3D 仿真赛项零基础备赛资料包
+origin  https://github.com/vinegar127/robocup3d-.git (fetch)
+origin  https://github.com/vinegar127/robocup3d-.git (push)
 ```
 
-而 `git status` 应该是干净的（没有 untracked 文件）。
+而 `git status` 应该是干净的。
 
 ---
 
-## 方案 A：网页建仓 + 命令行推送（**最推荐，最通用**）
+## 🚀 最快路径：直接跑脚本
 
-### 第 1 步：在 GitHub 上建一个**空**仓库
-
-1. 打开 <https://github.com/new>
-2. 填写：
-
-   | 字段 | 填什么 |
-   |------|--------|
-   | Repository name | `robocup3d-prep` |
-   | Description | `RoboCup 3D 仿真赛项零基础备赛资料包：安装指南 + 可运行 demo + 3D 步态可视化` |
-   | Public / Private | 建议 **Public**（RoboCup 鼓励开源；技术审查也好看） |
-   | Add a README file | ❌ **不要勾！** |
-   | Add .gitignore | ❌ **不要选！** |
-   | Choose a license | ❌ **不要选！** |
-
-   > ⚠️ **为什么不勾 README / .gitignore / license？**
-   > 因为这三样**你已经有了**。
-   > 如果 GitHub 帮你建了，远程仓库就会有一个你没有的 commit，
-   > 你推送时会被拒绝：
-   > ```
-   > ! [rejected] main -> main (fetch first)
-   > ```
-   > 这就是新手最常遇到的第一个坑。**建纯空仓库最省事。**
-
-3. 点 **Create repository**
-4. 建完后**先别关页面** —— 上面会显示仓库地址，格式：
-   `https://github.com/<你的用户名>/robocup3d-prep.git`
-
-### 第 2 步：添加远程地址并推送
-
-把下面的 `<你的用户名>` 换成你的 GitHub 用户名：
+本仓库提供了一个交互式脚本，**自动处理 SSH 密钥 + 连接测试 + 推送**：
 
 ```powershell
-cd <本仓库目录>
+cd E:\dsh_workspace\3d\robocup3d-prep
+powershell -ExecutionPolicy Bypass -File scripts\push-to-github.ps1
+```
 
-# ① 关联远程仓库
-git remote add origin https://github.com/<你的用户名>/robocup3d-prep.git
+脚本会：
 
-# ② 确认关联成功
-git remote -v
+1. 检查/生成 SSH 密钥，并把公钥复制到剪贴板
+2. 自动打开 GitHub 添加公钥的页面
+3. 测试 SSH 连接（22 端口被封时**自动改走 443**）
+4. 切换 remote 为 SSH 地址并推送
+5. 失败时给出针对性排错提示
 
-# ③ 推送
+**不想用脚本**就继续看下面的手动流程。
+
+---
+
+## 方案 A：HTTPS + Token
+
+### 第 1 步：确认仓库是空的
+
+打开 <https://github.com/vinegar127/robocup3d->
+
+**如果里面已经有 README**（建仓时勾了），推送会被拒绝：
+
+```
+! [rejected] main -> main (fetch first)
+```
+
+两种解法：
+- 那个 README 不要了 → `git push -u origin main --force`
+- 想保留 → `git pull origin main --allow-unrelated-histories` 后再推
+
+### 第 2 步：推送
+
+```powershell
+cd E:\dsh_workspace\3d\robocup3d-prep
 git push -u origin main
 ```
 
-### 第 3 步：处理认证（这里 90% 的人会卡住）
+### 第 3 步：认证
 
-推送时会要求你输入用户名和密码。**注意：GitHub 早就不能用账号密码了**，
-必须用 **Personal Access Token** 代替密码。
+**GitHub 早已禁用账号密码**，必须用 Token 或 SSH。
 
-**如果弹出浏览器让你登录** → 直接登录授权，完成。
-（这是 Git Credential Manager，最省事的情况。）
+**如果弹出浏览器** → 登录授权即可，最省事。
 
-**如果命令行提示输入密码** → 按下面步骤生成 Token：
+**如果提示输入密码** → 生成 Token：
 
 1. 打开 <https://github.com/settings/tokens>
-2. 推荐选 **Fine-grained tokens** → **Generate new token**
-   - Name：`robocup3d`（随便起）
+2. **Fine-grained tokens** → **Generate new token**
+   - Name：随便起
    - Expiration：90 天
-   - Repository access：选 **All repositories**（或只选这一个仓库）
+   - Repository access：**Only select repositories** → 选 `robocup3d-`
    - Permissions → Repository permissions：
      - **Contents: Read and write** ← 必须
-     - **Administration: Read and write** ← 建仓库才需要
-3. 点 **Generate token**，**立刻复制**（关掉页面就再也看不到了）
-4. 回到命令行：
-   - `Username` 输入你的 GitHub 用户名
-   - `Password` **粘贴刚才的 Token**（注意：粘贴时屏幕不显示字符，这是正常的）
+3. **立刻复制**（关掉页面就再也看不到了）
+4. 回到命令行：`Username` 填 `vinegar127`，
+   `Password` **粘贴 Token**（粘贴时屏幕不显示字符，这是正常的）
 
-成功后你会看到：
+成功后：
 
 ```
-Enumerating objects: ..., done.
-...
-To https://github.com/<你的用户名>/robocup3d-prep.git
+To https://github.com/vinegar127/robocup3d-.git
  * [new branch]      main -> main
 branch 'main' set up to track 'origin/main'.
 ```
 
-**✅ 完成！去 GitHub 网页刷新，就能看到你的仓库了。**
+**✅ 去网页刷新就能看到仓库了。**
 
 ---
 
-## 方案 B：用 GitHub CLI（如果已装 `gh`）
+## 方案 B：SSH（推荐长期使用）
+
+配好之后**再也不用输任何东西**。
 
 ```powershell
-# 1. 你已经 git init 并提交过了，所以直接建远程 + 推
-gh auth login
+# ① 生成密钥（连续回车即可）
+ssh-keygen -t ed25519 -C "zwyzwyjis@163.com"
 
-gh repo create robocup3d-prep --public --source=. --push `
-  --description "RoboCup 3D 仿真赛项零基础备赛资料包"
+# ② 复制【公钥】（认准 .pub 后缀！）
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | Set-Clipboard
 
-# 验证
-gh repo view --web
-```
+# ③ 去 https://github.com/settings/keys 点 New SSH key 粘贴
 
-一行命令搞定建仓+推送。适合熟悉命令行的同学。
+# ④ 测试（第一次问 yes/no 输 yes）
+ssh -T git@github.com
+#    期望: Hi vinegar127! You've successfully authenticated...
 
----
-
-## 方案 C：如果推送失败
-
-### 错误 1：`remote origin already exists`
-
-说明你之前加过远程地址。先删再加：
-
-```powershell
-git remote remove origin
-git remote add origin https://github.com/<你的用户名>/robocup3d-prep.git
-```
-
-### 错误 2：`! [rejected] main -> main (fetch first)`
-
-原因：远程仓库不是空的（你建仓时勾了 README / .gitignore / license）。
-
-**解法 A（推荐，远程内容不要了）**：
-
-```powershell
-git push -u origin main --force
-```
-> ⚠️ `--force` 会**覆盖远程的所有内容**。
-> 只在「远程只有 GitHub 自动生成的 README」时才安全。
-
-**解法 B（想保留远程内容）**：
-```powershell
-git pull origin main --allow-unrelated-histories
-# 手动解决冲突后
+# ⑤ 切换为 SSH 地址（注意是冒号，不是斜杠）
+git remote set-url origin git@github.com:vinegar127/robocup3d-.git
 git push -u origin main
 ```
 
-### 错误 3：`OpenSSL SSL_read: Connection was reset` / 连接超时
+### SSH 连不上时（22 端口被封）
 
-国内网络问题。见 `docs/01-环境安装.md` 第 5.3 节的网络方案
-（代理 / hosts / Gitee 中转）。
+新建 `C:\Users\zwyzw\.ssh\config`：
 
-### 错误 4：`Authentication failed`
+```
+Host github.com
+    HostName ssh.github.com
+    Port 443
+    User git
+```
 
-Token 没权限或过期了。重新生成一个，权限至少要有
-**Contents: Read and write**。
+再测一次 `ssh -T git@github.com`。
 
-### 错误 5：中文文件名显示成 `\344\270\255\346\226\207`
+> ⚠️ 公钥是 `.pub` 后缀那个，可以公开；
+> **没有 `.pub` 的是私钥，绝对不能外传或提交到 Git**。
 
-不是错误，是显示问题。执行：
+---
+
+## 方案 C：GitHub CLI
 
 ```powershell
-git config --global core.quotepath false
+gh auth login
+# 仓库已存在，直接推送：
+git push -u origin main
 ```
 
 ---
 
-## 推送完成后的建议
+## 推送失败的排查
 
-### 1. 检查仓库是否完整
+| 报错 | 原因 | 解法 |
+|------|------|------|
+| `repository not found` | **仓库名写错**（最常见：漏了末尾的 `-`） | `git remote -v` 对照网页地址 |
+| `repository not found` | 仓库私有且未登录 | 先认证，或把仓库设为 public |
+| `rejected / fetch first` | 远程不空 | 见第 1 步 |
+| `Authentication failed` | Token 无权限/过期 | 重新生成，勾 Contents: Read and write |
+| `schannel: SEC_E_NO_CREDENTIALS` | Windows 证书后端异常 | 见下 |
+| `OpenSSL SSL_read: Connection was reset` | 网络 | 走代理或重试 |
+| `Permission denied (publickey)` | 公钥没加上 | 去 settings/keys 确认 |
+| `Connection timed out` | 22 端口被封 | 用上面的 443 兜底配置 |
+| `remote origin already exists` | 加过 remote 了 | `git remote set-url origin <地址>` |
 
-打开仓库网页，确认：
+### `schannel: SEC_E_NO_CREDENTIALS`
 
-- [ ] README.md 正常显示（中文没乱码）
-- [ ] `docs/` 里 6 个 md 文件都在
-- [ ] `tools/walkviz/index.html` 能点开看源码
-- [ ] 文件列表里**没有** `__pycache__`、`.venv` 这种不该提交的东西
+Windows 的 TLS 后端拿不到凭据。两种解法：
 
-### 2. 设置仓库描述和话题（让别人搜得到）
+```powershell
+# 解法 1：换 Git 自带的 OpenSSL 后端
+git config --global http.sslBackend openssl
+git config --global http.sslCAInfo "D:/Git/mingw64/etc/ssl/certs/ca-bundle.crt"
 
-在仓库首页右上角 **⚙️ Settings** 附近点 **About** 的齿轮，填：
+# 解法 2：让 Git 走你的代理
+git config --global http.https://github.com.proxy http://127.0.0.1:7890
+# 端口换成你自己代理软件的（Clash 常见 7890 / 7897，从软件界面看）
+```
 
-- **Description**：`RoboCup 3D 仿真赛项零基础备赛资料包：环境安装指南 + 可运行 demo + 3D 步态可视化`
-- **Topics**（话题，用空格隔开）：
-  ```
-  robocup robocup3d simulation-league humanoid-robot mujoco python education chinese
-  ```
+取消代理：
 
-### 3. 邀请队友
+```powershell
+git config --global --unset http.https://github.com.proxy
+```
 
-**建议建一个 Organization（组织）**，而不是放在个人账号下：
-
-- 放在个人账号：这个人毕业了/退出队伍，仓库管理会很麻烦
-- 放在组织下：仓库属于队伍，可以一直传承
-
-创建组织：<https://github.com/account/organizations/new>
-
-然后把队友加进来（Settings → People → Invite）。
-
-### 4. 保护 main 分支（队伍人数多时强烈建议）
-
-Settings → Branches → Add branch protection rule：
-
-- Branch name pattern：`main`
-- 勾选 **Require a pull request before merging**
-
-这样谁都不能直接往 main 推代码，必须走 PR 流程 ——
-可以避免「某个队员半夜把主分支搞崩了」。
+> ⚠️ 如果你**不在**代理环境里却留着代理配置，会**反而连不上**。
+> 换网络（宿舍↔实验室）后记得检查。
 
 ---
 
-## 日常协作流程（推上去之后）
+## 日常协作流程
 
 ```powershell
-# ① 开工前：拉最新代码（★ 必须做，否则后面全是冲突）
+# ① 开工前先拉（★ 必须，否则后面全是冲突）
 git pull
 
-# ② 开一个自己的分支（不要直接在 main 上改）
+# ② 开分支（不要直接在 main 上改）
 git checkout -b feature/你的名字-改进点
 
 # ③ 改代码...
 
-# ④ 提交前先跑基准测试，拿到数字
+# ④ 提交前跑基准测试，拿到数字
 python code\demo_sim.py --bench 20
 
 # ⑤ 提交
@@ -243,29 +230,50 @@ git commit -m "feat: 改进踢球对准逻辑，场均进球 2.7 -> 3.4"
 # ⑥ 推送分支
 git push -u origin feature/你的名字-改进点
 
-# ⑦ 去 GitHub 上开 Pull Request
+# ⑦ 去 GitHub 开 Pull Request
 ```
 
-**提交信息的写法建议**（技术报告里会用到）：
+**提交信息前缀**（写技术报告时，`git log` 就是你的成果清单）：
 
-| 前缀 | 用途 | 例子 |
-|------|------|------|
-| `feat:` | 新功能 | `feat: 加入球的位置记忆` |
-| `fix:` | 修 bug | `fix: 修复看不见球时全员发呆` |
-| `docs:` | 文档 | `docs: 补充环境安装常见报错` |
-| `refactor:` | 重构（不改行为） | `refactor: 拆分 agent.py` |
-| `perf:` | 性能优化 | `perf: 优化搜索路径，找球时间减半` |
+| 前缀 | 用途 |
+|------|------|
+| `feat:` | 新功能 |
+| `fix:` | 修 bug |
+| `docs:` | 文档 |
+| `refactor:` | 重构 |
+| `perf:` | 性能优化 |
 
-> ★ **提交信息里带上数字**，第 8 周写技术报告时，
-> `git log` 就是你的成果清单。
+> ★ **提交信息里带上数字**（比如「场均进球 2.7 → 3.4」），
+> 第 8 周写技术报告时你会感谢自己。
 
 ---
 
-## 附：一句话版本
+## 推送完成后的建议
 
-如果你已经建好了空仓库、也配好了 Token，那么**只有两行**：
+1. **检查网页**：README 和 `docs/` 中文没乱码、没有 `__pycache__` 之类的垃圾
+2. **加描述和 Topics**：仓库首页 About → 填
+   `robocup robocup3d simulation-league humanoid-robot mujoco python education chinese`
+3. **建 Organization**：放在个人账号下，人毕业了仓库会很难处理；
+   放在组织下可以一直传承（<https://github.com/account/organizations/new>）
+4. **保护 main 分支**：Settings → Branches → 勾
+   *Require a pull request before merging*，
+   防止有人直接把主分支搞崩
+5. **考虑改个仓库名**：`robocup3d-` 末尾的横杠很容易让人打错，
+   建议在 Settings → General → Repository name 改成 `robocup3d`
+   或 `robocup3d-prep`；改名后 GitHub 会自动重定向旧地址，
+   然后本地执行：
+   ```powershell
+   git remote set-url origin https://github.com/vinegar127/新名字.git
+   ```
 
-```powershell
-git remote add origin https://github.com/<你的用户名>/robocup3d-prep.git
-git push -u origin main
-```
+---
+
+## 附：本机环境的两个已知问题
+
+推送时如果在这台机器上遇到下面情况，属于**正常**，按提示处理：
+
+| 现象 | 原因 |
+|------|------|
+| `schannel: SEC_E_NO_CREDENTIALS` | 这台机器的 Windows 证书后端有问题，用上面的解法 1 或 2 |
+| `sh.exe: couldn't create signal pipe, Win32 error 5` | 在受限沙箱里跑 Git 会这样；**在普通终端里不会有这个问题** |
+| 有时连不上 github.com 但过一会又好了 | 该域名解析到的 IP 时通时断，重试或走代理即可 |

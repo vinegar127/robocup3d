@@ -22,7 +22,7 @@ $ErrorActionPreference = "Stop"
 
 # ---- 配置：改成你的信息 ---------------------------------------------------
 $GithubUser = "vinegar127"
-$RepoName   = "robocup3d"
+$RepoName   = "robocup3d-"
 $RepoRoot   = Split-Path -Parent $PSScriptRoot
 $KeyPath    = Join-Path $env:USERPROFILE ".ssh\id_ed25519"
 
