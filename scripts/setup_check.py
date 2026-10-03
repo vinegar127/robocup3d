@@ -375,9 +375,63 @@ def check_demo(rep: Report):
         rep.bad("闭环仿真", "找不到 demo_sim.py", "重新 clone 仓库")
 
 
+def check_scripts_encoding(rep: Report):
+    """
+    ⑦ 检查 .ps1 脚本的 BOM。
+
+    为什么要专门检查这个？
+    Windows PowerShell 5.1（系统自带那个）在没有 BOM 时，会按系统 ANSI
+    代码页（中文 Windows 是 GBK/cp936）解码 .ps1 文件。脚本里的中文于是
+    变成乱码，乱码字节会破坏字符串引号配对，最后报出一堆与真实原因
+    完全无关的语法错误，例如：
+        Unexpected token '}' in expression or statement.
+        Missing closing '}' in statement block or type definition.
+    新手会以为脚本写错了，其实是编码问题。
+
+    这是真实发生过的 bug —— 本仓库的 push-to-github.ps1 就踩过。
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.dirname(here)
+
+    ps1_files = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in (".git", ".venv", "__pycache__")]
+        for fn in filenames:
+            if fn.lower().endswith(".ps1"):
+                ps1_files.append(os.path.join(dirpath, fn))
+
+    if not ps1_files:
+        rep.info("没有 .ps1 脚本需要检查（正常，本仓库以 Python 为主）")
+        return
+
+    bad = []
+    for p in ps1_files:
+        try:
+            with open(p, "rb") as fh:
+                head = fh.read(3)
+            if head != b"\xef\xbb\xbf":
+                bad.append(os.path.relpath(p, root))
+        except OSError:
+            bad.append(os.path.relpath(p, root) + " (读取失败)")
+
+    if not bad:
+        rep.good("PowerShell 脚本编码", f"{len(ps1_files)} 个均有 UTF-8 BOM")
+    else:
+        rep.bad(
+            "PowerShell 脚本编码",
+            f"缺少 UTF-8 BOM: {', '.join(bad)}",
+            "这会让脚本在 Windows PowerShell 5.1 下报一堆假的语法错误。\n"
+            "         修复（在 PowerShell 里执行，把文件名换成实际的）：\n"
+            "         $p='scripts\\push-to-github.ps1'\n"
+            "         $t=Get-Content $p -Raw -Encoding UTF8\n"
+            "         [IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding($true)))\n"
+            "         验证：$([IO.File]::ReadAllBytes($p)[0..2]) -join ',' 应输出 239,187,191",
+        )
+
+
 def check_optional_libs(rep: Report):
     """
-    ⑦ 可选的进阶库。
+    ⑧ 可选的进阶库。
     注意：这些【没装完全正常】—— 本仓库的 demo 零依赖。
     真实仿真器（MuJoCo）是第 3 周才需要的东西。
     """
@@ -458,6 +512,7 @@ def main() -> int:
     check_repo(rep)
     check_demo(rep)
     check_path_hygiene(rep)
+    check_scripts_encoding(rep)
     print()
 
     print(" 【进阶组件（可选）】")

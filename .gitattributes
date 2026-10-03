@@ -36,6 +36,26 @@
 # --- Windows 专用脚本必须保留 CRLF，否则 .bat/.ps1 会执行失败 ---
 *.bat   text eol=crlf
 *.cmd   text eol=crlf
+
+# ★ .ps1 必须【同时满足】两个条件，否则脚本在 Windows PowerShell 5.1 下会报
+#   一堆莫名其妙的语法错误（Unexpected token '}' / Missing closing '}'）：
+#     1. 行尾符是 CRLF
+#     2. 文件保存为 UTF-8 **with BOM**
+#   原因：Windows PowerShell 5.1（桌面版，系统自带那个）在没有 BOM 时
+#   会按系统 ANSI 代码页（中文 Windows 是 GBK/cp936）解码 .ps1 文件，
+#   于是脚本里的中文变成乱码，乱码字节又会破坏字符串引号配对，
+#   最终报出与真实原因完全无关的语法错误。
+#   PowerShell 7+ 默认按 UTF-8 读取，不受影响 —— 但队员们用的是系统自带的 5.1。
+#
+#   ⚠️ 修改 .ps1 后请务必确认 BOM 还在：
+#      $b=[IO.File]::ReadAllBytes('x.ps1')[0..2]; $b -join ','
+#      期望输出 239,187,191
+#   修复方法（在 PowerShell 里）：
+#      $p='x.ps1'; $t=Get-Content $p -Raw -Encoding UTF8
+#      [IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding($true)))
+#
+#   注意：`text eol=crlf` 本身不会破坏 BOM（已验证），
+#   但很多编辑器「另存为 UTF-8」会默认去掉 BOM，那才是真正的风险点。
 *.ps1   text eol=crlf
 
 # --- 二进制文件：禁止 Git 做任何换行/编码转换 ---
