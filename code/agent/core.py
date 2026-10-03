@@ -30,9 +30,19 @@ RoboCup3D 新手 Demo —— 第 2 层：Agent 的核心数据结构
 from __future__ import annotations
 
 import math
+import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
+
+# Windows 中文控制台默认是 GBK，输出被重定向/管道捕获时，
+# 打印中文会抛 UnicodeEncodeError 直接崩掉。
+# 显式转 UTF-8，避免「终端里能跑、脚本里调就报错」。
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 
 # ===========================================================================
@@ -104,13 +114,20 @@ class Percept:
     """
     仿真服务器在一个周期内发给 agent 的全部信息。
 
-    对应真实协议里的各种 perceptors：
-        HJ   (Hinge Joint)     —— 每个关节的当前角度
-        HJI  (Hinge Joint Info)—— 每个关节的范围/速度
-        FRP  (Force Resistive) —— 脚底压力传感器（判断脚是否着地）
-        Gyro / Accelerometer   —— IMU，判断身体姿态
-        See                    —— 视觉，看到球/球门/队友/对手
-        Hear                   —— 听到的语音（受限通信！）
+    对应真实协议里的各种 perceptors（感知器）：
+        HJ    (Hinge Joint)     —— 每个关节的当前角度
+        FRP   (Force Resistive) —— 脚底压力传感器（判断脚是否着地）
+        Gyro / Accelerometer    —— IMU，判断身体姿态
+        See                     —— 视觉，看到球/球门/队友/对手
+        Hear                    —— 听到的语音（受限通信！）
+        time                    —— 仿真时间
+
+    ⚠️ 注意：不同版本的仿真器对感知器的命名不完全一致，
+    上面的名字是 SimSpark 时代的常见叫法。
+    rcssservermj（2026 起）的准确列表请查官方文档：
+        https://robocup-sim.gitlab.io/rcssservermj/
+    本 demo 只关心「有哪些类别的信息」，不绑定具体字段名 ——
+    所以你换到真服务器时，只需要在 transport 层改映射，不用改逻辑。
     """
 
     time: float                                    # 仿真时间（秒）
@@ -288,4 +305,4 @@ if __name__ == "__main__":
     print("摔倒？", p.is_fallen, " 直立度:", round(p.uprightness, 2))
     sit = Situation.from_percept(p, Role.STRIKER)
     print("态势:", sit)
-    print("\nOK: 数据结构工作正常。下一步运行 demo_sim.py 看完整闭环。")
+    print("\nOK: 数据结构工作正常。下一步运行 code/demo_sim.py 看完整闭环（感知->决策->动作）。")

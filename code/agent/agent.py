@@ -664,4 +664,4 @@ if __name__ == "__main__":
     p_fall = Percept(time=2.0, cycle=100, accel=(0.0, 9.0, 1.0), observations=[])
     agent.act(p_fall, dt=0.02)
     print(f"    状态 = {agent.state.value}  (直立度 {p_fall.uprightness:.2f})")
-    print("\nOK: 状态机工作正常。下一步运行 demo_sim.py 看完整比赛闭环。")
+    print("\nOK: 状态机工作正常。下一步运行 code/demo_sim.py 看完整比赛闭环。")

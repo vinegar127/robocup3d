@@ -123,9 +123,15 @@ robocup3d-prep/
 ├── tools/
 │   └── walkviz/
 │       ├── index.html           ← 【双击即用】3D 步态可视化
-│       └── walk.py              ← 步态引擎 + 正/逆运动学（纯 Python）
-└── scripts/
-    └── setup_check.py           ← 一键体检：检查你的 Python 环境
+│       ├── walk.py              ← 步态引擎 + 正/逆运动学（纯 Python）
+│       └── README.md            ← 步态参数调参指南
+├── refs/
+│   ├── README.md                ← 参考资料索引 + 论文清单 + 读论文方法
+│   └── 队内资料调研-RoboCup3D.pdf ← 队内原始调研文档
+├── scripts/
+│   └── setup_check.py           ← 一键体检：检查你的 Python 环境
+├── run_demo.bat                 ← 【Windows 双击即用】菜单式启动器
+└── run_demo.sh                  ← Linux / macOS / WSL 启动器
 ```
 
 ### 分层设计：为什么这样分？
@@ -171,11 +177,16 @@ while True:
 
 | 字段 | 真实协议名 | 含义 |
 |------|-----------|------|
-| `joint_angles` | HJ | 每个关节现在多少度 |
-| `foot_pressure` | FRP | 脚底压力（判断有没有着地） |
-| `gyro` / `accel` | Gyro/Accel | IMU，判断身体歪没歪 |
+| `joint_angles` | HJ (Hinge Joint) | 每个关节现在多少度 |
+| `foot_pressure` | FRP (Force Resistive) | 脚底压力（判断有没有着地） |
+| `gyro` / `accel` | Gyro / Accelerometer | IMU，判断身体歪没歪 |
 | `observations` | See | 看到球 / 球门 / 队友 / 对手 |
 | `messages` | Hear | 听到的队友喊话（**带宽极小！**） |
+
+> ⚠️ 感知器的准确名称在不同仿真器版本里不一致（上表是 SimSpark 时代的常见叫法）。
+> **2026 起请以 `rcssservermj` 官方文档为准。**
+> 本仓库的代码**只依赖「信息类别」不依赖字段名**，
+> 所以换到真服务器时只需改传输层映射，业务逻辑一行不动。
 
 `command`（指令）里有什么：**只有关节角度**。
 你所有的智能，最后都必须变成一串角度数字。
@@ -237,11 +248,12 @@ def _foot_trajectory(self, phase):
 
 | 文档 | 内容 | 什么时候看 |
 |------|------|-----------|
-| [`docs/01-环境安装.md`](docs/01-环境安装.md) | Git / Python / VS Code / 插件 全流程安装，含 25+ 常见报错解决 | **第一天就看** |
-| [`docs/02-比赛规则与信息.md`](docs/02-比赛规则与信息.md) | 赛程、报名、获奖比例、规则要点 | 队长看 |
-| [`docs/03-技术入门.md`](docs/03-技术入门.md) | 系统架构、赛题拆解、文档调研里的论文导读 | 第 2 周看 |
-| [`docs/04-代码库分析.md`](docs/04-代码库分析.md) | ApolloCodebase / FCPCodebase / magmaRelease 对比，该抄哪个 | 第 3 周看 |
-| [`docs/05-八周训练计划.md`](docs/05-八周训练计划.md) | 逐周任务清单 | 队长直接照抄 |
+| [`docs/01-环境安装.md`](docs/01-环境安装.md) | Git / Python / VS Code / 插件 全流程安装，含 26 条常见报错解决 | **第一天就看** |
+| [`docs/02-比赛规则与信息.md`](docs/02-比赛规则与信息.md) | 赛程、报名、获奖比例、规则要点、备赛日历 | 队长看 |
+| [`docs/03-技术入门.md`](docs/03-技术入门.md) | 系统架构、六个子问题拆解、论文导读 | 第 2 周看 |
+| [`docs/04-代码库分析.md`](docs/04-代码库分析.md) | 8 个开源代码库的 2026 可用性对比，该抄哪个 | 第 3 周看 |
+| [`docs/05-八周训练计划.md`](docs/05-八周训练计划.md) | 逐周任务清单与验收标准 | 队长直接照抄 |
+| [`docs/06-附录-2D与术语.md`](docs/06-附录-2D与术语.md) | 2D/3D 对比、术语表（英↔中）、**10 个常见误解** | 遇到看不懂的词就查 |
 
 ---
 

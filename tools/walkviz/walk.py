@@ -407,4 +407,7 @@ if __name__ == "__main__":
                 f"{t:6.2f} {foot['ankle'][0]:9.3f} {joints['l_knee']:8.1f} "
                 f"{joints['r_knee']:8.1f} {rep['support_feet']:7d} {g.distance:9.3f}"
             )
-    print("\nOK: 步态生成器工作正常。下一步请运行 demo.py 看 3D 可视化。")
+    print("\nOK: 步态生成器工作正常。")
+    print("下一步：")
+    print("  - 用浏览器打开 tools/walkviz/index.html 看 3D 可视化")
+    print("  - 运行 python code/demo_sim.py 看完整闭环（感知->决策->动作）")
