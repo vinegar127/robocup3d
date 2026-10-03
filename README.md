@@ -390,7 +390,6 @@ python demo_sim.py --bench 20
 
 ## 参考与致谢
 
-- 本仓库的选题和论文导读基于队内《RoboCup3D——资料调研》文档
 - 官方服务器文档：<https://robocup-sim.gitlab.io/rcssservermj/>
 - 中国赛区规则：<https://rcccaa.drct-caa.org.cn/>
 - 3D 可视化工具：<https://github.com/magmaOffenburg/RoboViz>
